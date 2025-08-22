@@ -87,11 +87,12 @@ router.get('/inventory-summary', [
   query('stockStatus').optional().isIn(['low', 'normal', 'overstocked']).withMessage('Invalid stock status'),
   query('sortBy').optional().isIn(['name', 'cost', 'sale_price', 'profit_margin', 'quantity_in_stock']).withMessage('Invalid sort field'),
   query('sortOrder').optional().isIn(['asc', 'desc']).withMessage('Sort order must be asc or desc')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { category, stockStatus, sortBy = 'name', sortOrder = 'asc' } = req.query;
@@ -120,11 +121,11 @@ router.get('/inventory-summary', [
       }
     }
 
-    const query = `
-      SELECT * FROM inventory_summary
-      ${whereClause}
-      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
-    `;
+      const query = `
+        SELECT * FROM inventory_summary
+        ${whereClause}
+        ORDER BY ${sortBy} ${(typeof sortOrder === 'string' ? sortOrder : 'asc').toUpperCase()}
+      `;
 
     const result = await dbQuery(query, params);
     res.json(result.rows);
@@ -132,6 +133,7 @@ router.get('/inventory-summary', [
   } catch (error) {
     console.error('Error fetching inventory summary:', error);
     res.status(500).json({ error: 'Failed to fetch inventory summary' });
+      return;
   }
 });
 
@@ -140,11 +142,12 @@ router.get('/top-selling', [
   query('period').optional().isIn(['7d', '30d', '90d', '1y', 'all']).withMessage('Invalid period'),
   query('category').optional().isUUID().withMessage('Invalid category ID'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { period = '30d', category, limit = 20 } = req.query;
@@ -199,6 +202,7 @@ router.get('/top-selling', [
   } catch (error) {
     console.error('Error fetching top selling items:', error);
     res.status(500).json({ error: 'Failed to fetch top selling items' });
+    return;
   }
 });
 
@@ -206,11 +210,12 @@ router.get('/top-selling', [
 router.get('/profit-analysis', [
   query('period').optional().isIn(['7d', '30d', '90d', '1y', 'all']).withMessage('Invalid period'),
   query('groupBy').optional().isIn(['day', 'week', 'month', 'category']).withMessage('Invalid group by option')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { period = '30d', groupBy = 'month' } = req.query;
@@ -273,17 +278,19 @@ router.get('/profit-analysis', [
   } catch (error) {
     console.error('Error fetching profit analysis:', error);
     res.status(500).json({ error: 'Failed to fetch profit analysis' });
+    return;
   }
 });
 
 // Get low stock report
 router.get('/low-stock', [
   query('threshold').optional().isInt({ min: 0 }).withMessage('Threshold must be a non-negative integer')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { threshold } = req.query;
@@ -320,17 +327,19 @@ router.get('/low-stock', [
   } catch (error) {
     console.error('Error fetching low stock report:', error);
     res.status(500).json({ error: 'Failed to fetch low stock report' });
+    return;
   }
 });
 
 // Get overstocked items report
 router.get('/overstocked', [
   query('threshold').optional().isInt({ min: 1 }).withMessage('Threshold must be a positive integer')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { threshold } = req.query;
@@ -367,6 +376,7 @@ router.get('/overstocked', [
   } catch (error) {
     console.error('Error fetching overstocked report:', error);
     res.status(500).json({ error: 'Failed to fetch overstocked report' });
+    return;
   }
 });
 
@@ -375,11 +385,12 @@ router.post('/custom', [
   body('query').isString().isLength({ min: 1 }).withMessage('SQL query is required'),
   body('params').optional().isArray().withMessage('Params must be an array'),
   body('description').optional().isString().withMessage('Description must be a string')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { query: sqlQuery, params = [], description } = req.body;
@@ -387,13 +398,15 @@ router.post('/custom', [
     // Basic security: only allow SELECT queries
     const trimmedQuery = sqlQuery.trim().toLowerCase();
     if (!trimmedQuery.startsWith('select')) {
-      return res.status(400).json({ error: 'Only SELECT queries are allowed for security reasons' });
+      res.status(400).json({ error: 'Only SELECT queries are allowed for security reasons' });
+      return;
     }
 
     // Prevent dangerous operations
     const dangerousKeywords = ['drop', 'delete', 'insert', 'update', 'create', 'alter', 'truncate'];
     if (dangerousKeywords.some(keyword => trimmedQuery.includes(keyword))) {
-      return res.status(400).json({ error: 'Query contains forbidden keywords for security reasons' });
+      res.status(400).json({ error: 'Query contains forbidden keywords for security reasons' });
+      return;
     }
 
     const result = await dbQuery(sqlQuery, params);
@@ -411,6 +424,7 @@ router.post('/custom', [
       error: 'Failed to execute custom query',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return;
   }
 });
 
@@ -419,11 +433,12 @@ router.get('/sales-performance', [
   query('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO date'),
   query('endDate').optional().isISO8601().withMessage('End date must be a valid ISO date'),
   query('groupBy').optional().isIn(['day', 'week', 'month']).withMessage('Invalid group by option')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { startDate, endDate, groupBy = 'day' } = req.query;
@@ -487,6 +502,7 @@ router.get('/sales-performance', [
   } catch (error) {
     console.error('Error fetching sales performance:', error);
     res.status(500).json({ error: 'Failed to fetch sales performance' });
+    return;
   }
 });
 
@@ -494,11 +510,12 @@ router.get('/sales-performance', [
 router.get('/export/:reportType', [
   param('reportType').isIn(['inventory', 'sales', 'profit', 'low-stock', 'overstocked']).withMessage('Invalid report type'),
   query('format').optional().isIn(['json', 'csv']).withMessage('Format must be json or csv')
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     const { reportType } = req.params;
@@ -546,7 +563,7 @@ router.get('/export/:reportType', [
     if (format === 'csv') {
       // Convert to CSV format
       const headers = Object.keys(result.rows[0] || {}).join(',');
-      const csvData = result.rows.map(row => 
+      const csvData = result.rows.map((row: Record<string, any>) => 
         Object.values(row).map(value => 
           typeof value === 'string' && value.includes(',') ? `"${value}"` : value
         ).join(',')
@@ -569,6 +586,7 @@ router.get('/export/:reportType', [
   } catch (error) {
     console.error('Error exporting report:', error);
     res.status(500).json({ error: 'Failed to export report' });
+    return;
   }
 });
 
