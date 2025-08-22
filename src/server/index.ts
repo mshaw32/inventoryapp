@@ -56,8 +56,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve static files from public (for favicon and other assets)
+app.use(express.static(path.join(__dirname, '../../public')));
 
 // API Routes
+// Default /api route
+app.get('/api', (req, res) => {
+  res.json({ message: 'API is running', endpoints: [
+    '/api/auth', '/api/inventory', '/api/categories', '/api/transactions', '/api/suppliers', '/api/customers', '/api/sales', '/api/reports', '/api/health'
+  ] });
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/categories', categoryRoutes);
