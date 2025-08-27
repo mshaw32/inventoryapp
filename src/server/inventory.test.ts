@@ -6,4 +6,5 @@ describe('Inventory API', () => {
     const res = await request(app).get('/api');
     expect(res.statusCode).toBe(200);
   });
+  
 });
