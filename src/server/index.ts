@@ -33,6 +33,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 5000;
+let serverInstance: any = null;
 
 // Middleware
 app.use(helmet({
@@ -134,39 +135,51 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
     console.log('✅ Database connected successfully');
-    
-    // Start server
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 API URL: http://localhost:${PORT}/api`);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔧 Client URL: http://localhost:3000`);
-      }
-    });
+    // Start server only if not in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      serverInstance = server.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`🌐 API URL: http://localhost:${PORT}/api`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`🔧 Client URL: http://localhost:3000`);
+        }
+      });
+    }
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 // Graceful shutdown
+
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
-export default app;
+export { app, server, startServer };

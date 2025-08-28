@@ -84,19 +84,19 @@ export const connectDB = async (): Promise<void> => {
     
     console.log('✅ Database connection established successfully');
     
-    // Set up event handlers for the pool
-    pool.on('error', (err) => {
-      console.error('Unexpected error on idle client', err);
-      process.exit(-1);
-    });
-    
-    pool.on('connect', (client) => {
-      console.log('🔌 New client connected to database');
-    });
-    
-    pool.on('remove', (client) => {
-      console.log('🔌 Client removed from database pool');
-    });
+    // Optionally set up event handlers for the pool in production only
+    if (process.env.NODE_ENV === 'production') {
+      pool.on('error', (err) => {
+        console.error('Unexpected error on idle client', err);
+        process.exit(-1);
+      });
+      pool.on('connect', (client) => {
+        console.log('🔌 New client connected to database');
+      });
+      pool.on('remove', (client) => {
+        console.log('🔌 Client removed from database pool');
+      });
+    }
     
   } catch (error) {
     console.error('❌ Database connection failed:', error);
