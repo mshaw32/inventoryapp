@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { createServer } from 'http';
+import { createServer, Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 
@@ -33,7 +33,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 5000;
-let serverInstance: any = null;
+let serverInstance: HttpServer | null = null;
 
 // Middleware
 app.use(helmet({
